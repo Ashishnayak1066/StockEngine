@@ -1,0 +1,699 @@
+:
+        raise HTTPException(status_code=404, detail="No predictions available")
+    
+    return {
+        "ticker": ticker,
+        "model": model,
+        "predictions": predictions
+    }
+
+@router.get("/{ticker}/compare-models")
+async def compare_model_predictions(
+    ticker: str,
+    db: Session = Depends(get_db)
+):
+    """Compare predictions from all models"""
+    prophet_pred = generate_predictions(ticker, "prophet", 365, db)
+    lstm_pred = generate_predictions(ticker, "lstm", 365, db)
+    arima_pred = generate_predictions(ticker, "arima", 365, db)
+    
+    return {
+        "ticker": ticker,
+        "models": {
+            "prophet": prophet_pred,
+            "lstm": lstm_pred,
+            "arima": arima_pred
+        }
+    }
+```
+
+**Visualization Endpoints** (`backend/api/analytics.py`):
+```python
+from fastapi import APIRouter, Response
+from fastapi.responses import StreamingResponse
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import matplotlib.pyplot as plt
+import io
+
+router = APIRouter()
+
+@router.get("/{ticker}/chart")
+async def generate_stock_chart(
+    ticker: str,
+    chart_type: str = "price",  # price, prediction, performance
+    db: Session = Depends(get_db)
+):
+    """Generate matplotlib chart and return as image"""
+    # Fetch data
+    company = db.query(Company).filter(Company.ticker == ticker).first()
+    prices = db.query(StockPrice).filter(StockPrice.company_id == company.id).all()
+    
+    # Create chart
+    fig, ax = plt.subplots(figsize=(12, 6))
+    
+    dates = [p.date for p in prices]
+    closes = [float(p.close) for p in prices]
+    
+    ax.plot(dates, closes, linewidth=2)
+    ax.set_title(f'{ticker} Stock Price Over Time', fontsize=16)
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Price ($)')
+    ax.grid(True, alpha=0.3)
+    
+    # Save to bytes buffer
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+    buf.seek(0)
+    plt.close()
+    
+    return StreamingResponse(buf, media_type="image/png")
+
+@router.get("/{ticker}/comparison-chart")
+async def generate_comparison_chart(
+    ticker: str,
+    db: Session = Depends(get_db)
+):
+    """Generate chart comparing actual vs predicted prices"""
+    # Implementation for prediction comparison visualization
+    pass
+```
+
+### Phase 4: Frontend Dashboard Development
+
+#### Step 4.1: React Application Setup
+Create `frontend/src/App.jsx`:
+```javascript
+import React, { useState, useEffect } from 'react';
+import Dashboard from './components/Dashboard';
+import CompanySelector from './components/CompanySelector';
+import StockChart from './components/StockChart';
+import PredictionPanel from './components/PredictionPanel';
+import './styles/main.css';
+
+function App() {
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [companies, setCompanies] = useState([]);
+
+  useEffect(() => {
+    // Fetch companies list on mount
+    fetch('http://localhost:8000/api/companies')
+      .then(res => res.json())
+      .then(data => setCompanies(data));
+  }, []);
+
+  return (
+    <div className="app">
+      <header className="app-header">
+        <h1>Stock Prediction Platform</h1>
+        <CompanySelector 
+          companies={companies}
+          onSelect={setSelectedCompany}
+        />
+      </header>
+      
+      <main className="app-main">
+        {selectedCompany && (
+          <Dashboard 
+            ticker={selectedCompany.ticker}
+            companyName={selectedCompany.name}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default App;
+```
+
+#### Step 4.2: Dashboard Component
+Create `frontend/src/components/Dashboard.jsx`:
+```javascript
+import React, { useState, useEffect } from 'react';
+import StockChart from './StockChart';
+import PredictionPanel from './PredictionPanel';
+import PerformanceTable from './PerformanceTable';
+import { fetchStockData, fetchPredictions, fetchPerformance } from '../services/api';
+
+function Dashboard({ ticker, companyName }) {
+  const [stockData, setStockData] = useState(null);
+  const [predictions, setPredictions] = useState(null);
+  const [performance, setPerformance] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedModel, setSelectedModel] = useState('prophet');
+
+  useEffect(() => {
+    loadData();
+  }, [ticker]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [stock, pred, perf] = await Promise.all([
+        fetchStockData(ticker),
+        fetchPredictions(ticker, selectedModel),
+        fetchPerformance(ticker)
+      ]);
+      
+      setStockData(stock);
+      setPredictions(pred);
+      setPerformance(perf);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="loading">Loading data for {ticker}...</div>;
+  }
+
+  return (
+    <div className="dashboard">
+      <div className="dashboard-header">
+        <h2>{companyName} ({ticker})</h2>
+        <div className="current-price">
+          ${performance?.current_price.toFixed(2)}
+        </div>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="chart-section">
+          <h3>Historical Price Performance</h3>
+          <StockChart 
+            data={stockData}
+            predictions={predictions}
+            ticker={ticker}
+          />
+        </div>
+
+        <div className="prediction-section">
+          <PredictionPanel 
+            ticker={ticker}
+            predictions={predictions}
+            onModelChange={setSelectedModel}
+            selectedModel={selectedModel}
+          />
+        </div>
+
+        <div className="performance-section">
+          <PerformanceTable performance={performance} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Dashboard;
+```
+
+#### Step 4.3: Stock Chart Component with Plotly
+Create `frontend/src/components/StockChart.jsx`:
+```javascript
+import React from 'react';
+import Plot from 'react-plotly.js';
+
+function StockChart({ data, predictions, ticker }) {
+  if (!data) return null;
+
+  // Prepare historical data
+  const historicalTrace = {
+    x: data.map(d => d.date),
+    y: data.map(d => d.close),
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Historical Price',
+    line: { color: '#2563eb', width: 2 }
+  };
+
+  // Prepare prediction data
+  const predictionTrace = predictions ? {
+    x: predictions.map(p => p.date),
+    y: predictions.map(p => p.predicted_price),
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Predicted Price',
+    line: { color: '#dc2626', width: 2, dash: 'dash' }
+  } : null;
+
+  // Confidence interval
+  const confidenceTrace = predictions ? {
+    x: [...predictions.map(p => p.date), ...predictions.map(p => p.date).reverse()],
+    y: [...predictions.map(p => p.upper_bound), ...predictions.map(p => p.lower_bound).reverse()],
+    fill: 'toself',
+    fillcolor: 'rgba(220, 38, 38, 0.1)',
+    line: { color: 'transparent' },
+    name: '95% Confidence',
+    showlegend: true
+  } : null;
+
+  const traces = [historicalTrace];
+  if (predictionTrace) traces.push(predictionTrace);
+  if (confidenceTrace) traces.push(confidenceTrace);
+
+  const layout = {
+    title: `${ticker} Stock Price`,
+    xaxis: {
+      title: 'Date',
+      type: 'date'
+    },
+    yaxis: {
+      title: 'Price ($)'
+    },
+    hovermode: 'x unified',
+    showlegend: true,
+    height: 500
+  };
+
+  return (
+    <div className="stock-chart">
+      <Plot
+        data={traces}
+        layout={layout}
+        config={{ responsive: true }}
+        style={{ width: '100%', height: '100%' }}
+      />
+    </div>
+  );
+}
+
+export default StockChart;
+```
+
+#### Step 4.4: Prediction Panel
+Create `frontend/src/components/PredictionPanel.jsx`:
+```javascript
+import React from 'react';
+
+function PredictionPanel({ ticker, predictions, onModelChange, selectedModel }) {
+  const models = ['prophet', 'lstm', 'arima'];
+
+  if (!predictions) return null;
+
+  const nextYearPrediction = predictions[predictions.length - 1];
+  const currentPrice = predictions[0].predicted_price;
+  const predictedChange = ((nextYearPrediction.predicted_price - currentPrice) / currentPrice) * 100;
+
+  return (
+    <div className="prediction-panel">
+      <h3>Price Prediction</h3>
+      
+      <div className="model-selector">
+        <label>Model:</label>
+        <select value={selectedModel} onChange={(e) => onModelChange(e.target.value)}>
+          {models.map(model => (
+            <option key={model} value={model}>
+              {model.toUpperCase()}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="prediction-summary">
+        <div className="prediction-card">
+          <h4>Predicted Price (1 Year)</h4>
+          <div className="prediction-value">
+            ${nextYearPrediction.predicted_price.toFixed(2)}
+          </div>
+        </div>
+
+        <div className="prediction-card">
+          <h4>Expected Change</h4>
+          <div className={`prediction-value ${predictedChange >= 0 ? 'positive' : 'negative'}`}>
+            {predictedChange >= 0 ? '+' : ''}{predictedChange.toFixed(2)}%
+          </div>
+        </div>
+
+        <div className="prediction-card">
+          <h4>Confidence Range</h4>
+          <div className="prediction-range">
+            ${nextYearPrediction.lower_bound.toFixed(2)} - ${nextYearPrediction.upper_bound.toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      <div className="prediction-chart-mini">
+        {/* Mini chart showing prediction trajectory */}
+      </div>
+
+      <div className="prediction-disclaimer">
+        <p>⚠️ Predictions are based on historical data and should not be used as financial advice.</p>
+      </div>
+    </div>
+  );
+}
+
+export default PredictionPanel;
+```
+
+### Phase 5: Automation & Deployment
+
+#### Step 5.1: Scheduled Data Updates
+Create `backend/tasks/scheduler.py`:
+```python
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from services.data_fetcher import StockDataFetcher
+from database import SessionLocal
+import logging
+
+logger = logging.getLogger(__name__)
+
+def update_stock_data():
+    """Fetch latest stock data for all companies"""
+    db = SessionLocal()
+    try:
+        fetcher = StockDataFetcher()
+        companies = db.query(Company).all()
+        
+        for company in companies:
+            logger.info(f"Updating data for {company.ticker}")
+            data = fetcher.fetch_stock_data(company.ticker)
+            # Store in database
+            
+    except Exception as e:
+        logger.error(f"Error updating stock data: {e}")
+    finally:
+        db.close()
+
+def retrain_models():
+    """Retrain ML models weekly"""
+    db = SessionLocal()
+    try:
+        trainer = ModelTrainer()
+        companies = db.query(Company).all()
+        
+        for company in companies:
+            logger.info(f"Retraining models for {company.ticker}")
+            # Fetch data and retrain
+            
+    except Exception as e:
+        logger.error(f"Error retraining models: {e}")
+    finally:
+        db.close()
+
+def start_scheduler():
+    """Initialize and start scheduler"""
+    scheduler = BackgroundScheduler()
+    
+    # Update stock data daily at market close (4 PM EST)
+    scheduler.add_job(
+        update_stock_data,
+        CronTrigger(hour=16, minute=0, timezone='America/New_York'),
+        id='update_stock_data',
+        replace_existing=True
+    )
+    
+    # Retrain models weekly on Sunday
+    scheduler.add_job(
+        retrain_models,
+        CronTrigger(day_of_week='sun', hour=2, minute=0),
+        id='retrain_models',
+        replace_existing=True
+    )
+    
+    scheduler.start()
+    logger.info("Scheduler started")
+```
+
+#### Step 5.2: Docker Configuration
+Create `docker-compose.yml`:
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: stockuser
+      POSTGRES_PASSWORD: stockpass
+      POSTGRES_DB: stockdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stockuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://stockuser:stockpass@postgres:5432/stockdb
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+      - ./models:/app/models
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:
+  redis_data:
+```
+
+Create `docker/Dockerfile.backend`:
+```dockerfile
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY backend/ .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### Phase 6: Testing & Documentation
+
+#### Step 6.1: Create Tests
+Create `tests/test_api.py`:
+```python
+from fastapi.testclient import TestClient
+from backend.main import app
+
+client = TestClient(app)
+
+def test_get_companies():
+    response = client.get("/api/companies")
+    assert response.status_code == 200
+    assert len(response.json()) == 100
+
+def test_get_stock_prices():
+    response = client.get("/api/stocks/AAPL/prices")
+    assert response.status_code == 200
+    assert "data" in response.json()
+
+def test_get_predictions():
+    response = client.get("/api/predictions/AAPL/predict")
+    assert response.status_code == 200
+    assert "predictions" in response.json()
+```
+
+#### Step 6.2: Create Comprehensive README
+```markdown
+# Stock Prediction Platform
+
+Full-stack web application for analyzing historical stock prices and predicting future trends using machine learning.
+
+## Features
+- 📊 Historical data for 100 companies across multiple sectors
+- 📈 Interactive charts with Plotly
+- 🤖 ML predictions using Prophet, LSTM, and ARIMA
+- 📉 Performance metrics and analytics
+- 🔄 Automated daily data updates
+- 🚀 RESTful API for programmatic access
+
+## Tech Stack
+**Backend:** Python, FastAPI, PostgreSQL, Redis  
+**ML:** Prophet, TensorFlow, scikit-learn  
+**Frontend:** React, Plotly.js  
+**DevOps:** Docker, Docker Compose, Nginx
+
+## Quick Start
+
+### Using Docker (Recommended)
+```bash
+# Clone repository
+git clone https://github.com/yourusername/stock-prediction-platform
+cd stock-prediction-platform
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# Start all services
+docker-compose up -d
+
+# Initialize database and load data
+docker-compose exec backend python scripts/init_database.py
+docker-compose exec backend python scripts/populate_companies.py
+docker-compose exec backend python scripts/fetch_historical_data.py
+
+# Train initial models (this will take some time)
+docker-compose exec backend python scripts/train_models.py
+```
+
+Access the application at:
+- Frontend: http://localhost:3000
+- API Docs: http://localhost:8000/docs
+- MLflow UI: http://localhost:5000
+
+### Local Development
+[Installation instructions for local setup]
+
+## API Documentation
+Full API documentation available at `/docs` when running the backend.
+
+### Key Endpoints
+- `GET /api/companies` - List all companies
+- `GET /api/stocks/{ticker}/prices` - Historical prices
+- `GET /api/predictions/{ticker}/predict` - Get predictions
+- `GET /api/analytics/{ticker}/performance` - Performance metrics
+
+## Project Structure
+[Directory structure explanation]
+
+## Machine Learning Models
+### Prophet
+Facebook's time series forecasting model...
+
+### LSTM
+Deep learning model for sequence prediction...
+
+### ARIMA
+Statistical model for time series analysis...
+
+## Contributing
+[Contribution guidelines]
+
+## License
+MIT License
+
+## Disclaimer
+This application is for educational purposes only. Do not use predictions for actual trading decisions.
+```
+
+## Success Metrics
+
+Your project is complete when:
+- [ ] Database contains data for 100 companies
+- [ ] All 3 ML models train successfully
+- [ ] API endpoints return correct data
+- [ ] Frontend displays interactive charts
+- [ ] Predictions are generated and displayed
+- [ ] Docker containers run without errors
+- [ ] Automated data updates work
+- [ ] Tests pass
+- [ ] Documentation is complete
+- [ ] Demo video showcases all features
+
+## Advanced Features (Optional Enhancements)
+
+1. **Portfolio Tracking**: Allow users to create and track portfolios
+2. **Alerts System**: Email/SMS notifications for price targets
+3. **Comparison Tool**: Side-by-side comparison of multiple stocks
+4. **Backtesting**: Test ML model performance on historical data
+5. **News Integration**: Display relevant news for each stock
+6. **Sector Analysis**: Compare performance across sectors
+7. **Export Functionality**: Download data and charts as CSV/PDF
+8. **User Authentication**: Personal watchlists and preferences
+9. **Real-time Data**: WebSocket connections for live updates
+10. **Mobile App**: React Native mobile version
+
+## Presentation Tips
+
+**For Recruiters:**
+1. **Demo Video** (3-5 minutes):
+   - Show company selector
+   - Display interactive charts
+   - Demonstrate predictions from all 3 models
+   - Show comparison features
+   - Highlight automated updates
+
+2. **GitHub Repository:**
+   - Professional README with architecture diagram
+   - Clean, documented code
+   - Comprehensive API documentation
+   - Setup instructions that work
+
+3. **Live Demo:**
+   - Have it running on your laptop
+   - Show real-time interactions
+   - Explain technical decisions
+   - Discuss model performance
+
+4. **Blog Post:**
+   - Architecture decisions
+   - Model selection rationale
+   - Challenges and solutions
+   - Performance optimizations
+
+## Tips for AI-Assisted Development
+
+When using this prompt with AI tools:
+
+1. **Build incrementally**: Complete each phase fully before moving on
+2. **Test continuously**: Run tests after each feature
+3. **Ask for explanations**: "Why use Prophet over ARIMA for this?"
+4. **Request alternatives**: "What are other ways to implement this?"
+5. **Debug collaboratively**: Share error messages for help
+6. **Optimize iteratively**: Start simple, then add performance improvements
+
+This project demonstrates: **Data engineering, API development, ML model deployment, full-stack development, database design, Docker orchestration, and production systems thinking** - all critical skills from the job posting.

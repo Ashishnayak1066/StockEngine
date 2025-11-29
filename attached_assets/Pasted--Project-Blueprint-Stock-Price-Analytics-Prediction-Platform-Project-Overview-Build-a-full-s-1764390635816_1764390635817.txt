@@ -1,0 +1,831 @@
+# Project Blueprint: Stock Price Analytics & Prediction Platform
+
+## Project Overview
+Build a full-stack web application that displays historical stock price data for 100 companies, visualizes performance trends through interactive dashboards, and uses machine learning models to predict future stock prices based on historical patterns. This project demonstrates data engineering, web development, ML integration, and production deployment skills.
+
+## System Architecture
+
+### Components
+1. **Data Collection Module** - Fetch and store historical stock data
+2. **Database Layer** - PostgreSQL for structured stock data storage
+3. **ML Prediction Engine** - Time series models for price forecasting
+4. **Backend API** - FastAPI/Flask for serving data and predictions
+5. **Frontend Dashboard** - Interactive web interface with charts
+6. **Caching Layer** - Redis for performance optimization
+7. **Scheduled Jobs** - Automated daily data updates
+
+### Data Flow
+```
+Stock API → Data Ingestion → Database → Backend API → Frontend Dashboard
+                                    ↓
+                            ML Training Pipeline → Trained Models → Predictions
+```
+
+## Technology Stack
+
+### Backend Technologies
+- **Python 3.10+** - Primary backend language
+- **FastAPI** - Modern REST API framework (fast, async, auto-documentation)
+- **PostgreSQL** - Primary database for stock data
+- **Redis** - Caching layer for API responses
+- **SQLAlchemy** - ORM for database operations
+- **Alembic** - Database migrations
+
+### Data Collection
+- **yfinance** - Yahoo Finance API wrapper for stock data
+- **pandas** - Data manipulation and processing
+- **pandas_datareader** - Alternative data source
+- **alpha_vantage** (optional) - Professional API for real-time data
+- **requests** - HTTP client for API calls
+
+### Machine Learning
+- **scikit-learn** - Traditional ML algorithms
+- **Prophet** (Facebook) - Time series forecasting
+- **statsmodels** - ARIMA and statistical models
+- **TensorFlow/Keras or PyTorch** - Deep learning models (LSTM)
+- **joblib** - Model serialization
+- **numpy** - Numerical computations
+
+### Visualization & Frontend
+- **React.js** or **Vue.js** - Frontend framework (or use simple HTML/JS)
+- **Plotly.js** or **Chart.js** - Interactive JavaScript charts
+- **matplotlib** - Generate charts on backend
+- **seaborn** - Statistical visualizations
+- **Tailwind CSS** or **Bootstrap** - UI styling
+
+### DevOps & Deployment
+- **Docker & Docker Compose** - Containerization
+- **Nginx** - Reverse proxy and static file serving
+- **APScheduler** or **Celery** - Task scheduling
+- **pytest** - Testing framework
+- **Git/GitHub** - Version control
+
+## Project Structure
+
+```
+stock-prediction-platform/
+│
+├── docker-compose.yml           # Orchestrates all services
+├── .env.example                 # Environment variables template
+├── requirements.txt             # Python dependencies
+├── README.md                    # Project documentation
+├── .gitignore                   # Git ignore file
+│
+├── backend/
+│   ├── main.py                  # FastAPI application entry
+│   ├── config.py                # Configuration settings
+│   ├── database.py              # Database connection setup
+│   │
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── stocks.py            # Stock data endpoints
+│   │   ├── predictions.py       # Prediction endpoints
+│   │   ├── analytics.py         # Analytics endpoints
+│   │   └── companies.py         # Company information endpoints
+│   │
+│   ├── models/                  # SQLAlchemy models
+│   │   ├── __init__.py
+│   │   ├── stock.py             # Stock price model
+│   │   ├── company.py           # Company information model
+│   │   └── prediction.py        # Prediction results model
+│   │
+│   ├── schemas/                 # Pydantic schemas
+│   │   ├── __init__.py
+│   │   ├── stock.py             # Stock data schemas
+│   │   └── prediction.py        # Prediction schemas
+│   │
+│   ├── services/
+│   │   ├── data_fetcher.py      # Fetch stock data from APIs
+│   │   ├── data_processor.py    # Clean and transform data
+│   │   ├── cache_service.py     # Redis caching logic
+│   │   └── visualization.py     # Generate matplotlib charts
+│   │
+│   ├── ml/
+│   │   ├── __init__.py
+│   │   ├── models/
+│   │   │   ├── prophet_model.py     # Prophet implementation
+│   │   │   ├── lstm_model.py        # LSTM neural network
+│   │   │   └── arima_model.py       # ARIMA model
+│   │   ├── training.py              # Model training pipeline
+│   │   ├── prediction.py            # Generate predictions
+│   │   ├── evaluation.py            # Model evaluation metrics
+│   │   └── feature_engineering.py   # Feature creation
+│   │
+│   ├── tasks/
+│   │   ├── scheduler.py         # APScheduler setup
+│   │   └── data_update.py       # Daily data update job
+│   │
+│   └── utils/
+│       ├── logger.py            # Logging configuration
+│       └── helpers.py           # Utility functions
+│
+├── frontend/
+│   ├── public/
+│   │   └── index.html
+│   ├── src/
+│   │   ├── App.jsx              # Main application component
+│   │   ├── main.jsx             # Entry point
+│   │   │
+│   │   ├── components/
+│   │   │   ├── Dashboard.jsx        # Main dashboard
+│   │   │   ├── StockChart.jsx       # Price chart component
+│   │   │   ├── CompanySelector.jsx  # Company dropdown
+│   │   │   ├── PredictionPanel.jsx  # Prediction display
+│   │   │   ├── PerformanceTable.jsx # Performance metrics
+│   │   │   └── Comparison.jsx       # Compare multiple stocks
+│   │   │
+│   │   ├── services/
+│   │   │   └── api.js           # API client
+│   │   │
+│   │   ├── styles/
+│   │   │   └── main.css
+│   │   │
+│   │   └── utils/
+│   │       └── formatters.js    # Data formatting utilities
+│   │
+│   ├── package.json
+│   └── vite.config.js           # Build configuration
+│
+├── scripts/
+│   ├── init_database.py         # Database initialization
+│   ├── populate_companies.py    # Load 100 companies
+│   ├── fetch_historical_data.py # Initial data population
+│   ├── train_models.py          # Train all ML models
+│   └── backfill_predictions.py  # Generate historical predictions
+│
+├── data/
+│   ├── companies.csv            # List of 100 companies (ticker, name, sector)
+│   ├── raw/                     # Raw downloaded data
+│   └── processed/               # Processed datasets
+│
+├── models/                      # Saved ML models
+│   ├── prophet/
+│   ├── lstm/
+│   └── model_metadata.json
+│
+├── tests/
+│   ├── test_api.py
+│   ├── test_data_fetcher.py
+│   ├── test_predictions.py
+│   └── test_models.py
+│
+├── docker/
+│   ├── Dockerfile.backend
+│   ├── Dockerfile.frontend
+│   └── nginx.conf
+│
+└── notebooks/                   # Jupyter notebooks for exploration
+    ├── data_exploration.ipynb
+    ├── model_experiments.ipynb
+    └── visualization_tests.ipynb
+```
+
+## Implementation Steps
+
+### Phase 1: Project Setup & Data Collection
+
+#### Step 1.1: Environment Setup
+```bash
+# Create project structure
+mkdir stock-prediction-platform
+cd stock-prediction-platform
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install core dependencies
+pip install fastapi uvicorn sqlalchemy psycopg2-binary alembic redis yfinance pandas numpy
+```
+
+#### Step 1.2: Database Setup
+1. **Create PostgreSQL database schema**
+   ```sql
+   -- Companies table
+   CREATE TABLE companies (
+       id SERIAL PRIMARY KEY,
+       ticker VARCHAR(10) UNIQUE NOT NULL,
+       name VARCHAR(255) NOT NULL,
+       sector VARCHAR(100),
+       market_cap BIGINT,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Stock prices table
+   CREATE TABLE stock_prices (
+       id SERIAL PRIMARY KEY,
+       company_id INTEGER REFERENCES companies(id),
+       date DATE NOT NULL,
+       open DECIMAL(10, 2),
+       high DECIMAL(10, 2),
+       low DECIMAL(10, 2),
+       close DECIMAL(10, 2),
+       volume BIGINT,
+       adjusted_close DECIMAL(10, 2),
+       UNIQUE(company_id, date)
+   );
+
+   -- Predictions table
+   CREATE TABLE predictions (
+       id SERIAL PRIMARY KEY,
+       company_id INTEGER REFERENCES companies(id),
+       prediction_date DATE NOT NULL,
+       target_date DATE NOT NULL,
+       predicted_price DECIMAL(10, 2),
+       confidence_lower DECIMAL(10, 2),
+       confidence_upper DECIMAL(10, 2),
+       model_name VARCHAR(50),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Create indexes for performance
+   CREATE INDEX idx_stock_prices_company_date ON stock_prices(company_id, date);
+   CREATE INDEX idx_predictions_company_date ON predictions(company_id, target_date);
+   ```
+
+2. **Set up SQLAlchemy models** (`backend/models/stock.py`)
+   ```python
+   from sqlalchemy import Column, Integer, String, Date, Numeric, BigInteger, ForeignKey
+   from sqlalchemy.orm import relationship
+   from database import Base
+
+   class Company(Base):
+       __tablename__ = "companies"
+       
+       id = Column(Integer, primary_key=True)
+       ticker = Column(String(10), unique=True, nullable=False)
+       name = Column(String(255), nullable=False)
+       sector = Column(String(100))
+       market_cap = Column(BigInteger)
+       
+       prices = relationship("StockPrice", back_populates="company")
+       predictions = relationship("Prediction", back_populates="company")
+
+   class StockPrice(Base):
+       __tablename__ = "stock_prices"
+       
+       id = Column(Integer, primary_key=True)
+       company_id = Column(Integer, ForeignKey("companies.id"))
+       date = Column(Date, nullable=False)
+       open = Column(Numeric(10, 2))
+       high = Column(Numeric(10, 2))
+       low = Column(Numeric(10, 2))
+       close = Column(Numeric(10, 2))
+       volume = Column(BigInteger)
+       adjusted_close = Column(Numeric(10, 2))
+       
+       company = relationship("Company", back_populates="prices")
+   ```
+
+#### Step 1.3: Data Collection Module
+Create `backend/services/data_fetcher.py`:
+```python
+import yfinance as yf
+import pandas as pd
+from datetime import datetime, timedelta
+
+class StockDataFetcher:
+    def __init__(self):
+        self.default_period = "5y"  # 5 years of historical data
+    
+    def fetch_stock_data(self, ticker: str, start_date=None, end_date=None):
+        """Fetch historical stock data for a single ticker"""
+        try:
+            stock = yf.Ticker(ticker)
+            
+            if start_date and end_date:
+                df = stock.history(start=start_date, end=end_date)
+            else:
+                df = stock.history(period=self.default_period)
+            
+            df.reset_index(inplace=True)
+            df['Ticker'] = ticker
+            
+            return df
+        except Exception as e:
+            print(f"Error fetching data for {ticker}: {e}")
+            return None
+    
+    def fetch_multiple_stocks(self, tickers: list):
+        """Fetch data for multiple stocks"""
+        all_data = []
+        
+        for ticker in tickers:
+            data = self.fetch_stock_data(ticker)
+            if data is not None:
+                all_data.append(data)
+        
+        return pd.concat(all_data, ignore_index=True) if all_data else None
+    
+    def get_company_info(self, ticker: str):
+        """Get company information"""
+        try:
+            stock = yf.Ticker(ticker)
+            info = stock.info
+            return {
+                'ticker': ticker,
+                'name': info.get('longName', ticker),
+                'sector': info.get('sector', 'Unknown'),
+                'market_cap': info.get('marketCap', 0)
+            }
+        except Exception as e:
+            print(f"Error fetching info for {ticker}: {e}")
+            return None
+```
+
+#### Step 1.4: Populate Database with 100 Companies
+Create `scripts/populate_companies.py`:
+```python
+# List of 100 diverse companies across sectors
+COMPANIES = [
+    # Technology
+    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA', 'ADBE', 'CRM', 'ORCL',
+    'INTC', 'AMD', 'AVGO', 'CSCO', 'IBM', 'QCOM', 'TXN', 'INTU', 'NOW', 'PANW',
+    
+    # Finance
+    'JPM', 'BAC', 'WFC', 'GS', 'MS', 'C', 'BLK', 'SCHW', 'AXP', 'USB',
+    
+    # Healthcare
+    'JNJ', 'UNH', 'PFE', 'ABBV', 'TMO', 'MRK', 'ABT', 'DHR', 'LLY', 'BMY',
+    
+    # Consumer
+    'WMT', 'HD', 'PG', 'KO', 'PEP', 'COST', 'NKE', 'MCD', 'SBUX', 'TGT',
+    
+    # Energy
+    'XOM', 'CVX', 'COP', 'SLB', 'EOG', 'MPC', 'PSX', 'VLO', 'OXY', 'HAL',
+    
+    # Industrials
+    'BA', 'HON', 'UPS', 'CAT', 'GE', 'MMM', 'LMT', 'RTX', 'DE', 'UNP',
+    
+    # Telecommunications
+    'T', 'VZ', 'TMUS', 'CMCSA', 'DIS', 'NFLX', 'CHTR', 'PARA', 'WBD', 'FOX',
+    
+    # Real Estate & Utilities
+    'AMT', 'PLD', 'CCI', 'EQIX', 'PSA', 'NEE', 'DUK', 'SO', 'D', 'AEP'
+]
+
+# Script to fetch and store company data
+def populate_database():
+    fetcher = StockDataFetcher()
+    
+    for ticker in COMPANIES:
+        company_info = fetcher.get_company_info(ticker)
+        # Store in database
+        # Fetch historical prices
+        # Store prices in database
+```
+
+### Phase 2: Machine Learning Pipeline
+
+#### Step 2.1: Feature Engineering
+Create `backend/ml/feature_engineering.py`:
+```python
+import pandas as pd
+import numpy as np
+
+class StockFeatureEngineer:
+    def create_features(self, df: pd.DataFrame):
+        """Create technical indicators and features"""
+        df = df.copy()
+        
+        # Moving averages
+        df['MA_7'] = df['Close'].rolling(window=7).mean()
+        df['MA_30'] = df['Close'].rolling(window=30).mean()
+        df['MA_90'] = df['Close'].rolling(window=90).mean()
+        
+        # Exponential moving averages
+        df['EMA_12'] = df['Close'].ewm(span=12, adjust=False).mean()
+        df['EMA_26'] = df['Close'].ewm(span=26, adjust=False).mean()
+        
+        # MACD
+        df['MACD'] = df['EMA_12'] - df['EMA_26']
+        df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        
+        # RSI (Relative Strength Index)
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['RSI'] = 100 - (100 / (1 + rs))
+        
+        # Bollinger Bands
+        df['BB_Middle'] = df['Close'].rolling(window=20).mean()
+        bb_std = df['Close'].rolling(window=20).std()
+        df['BB_Upper'] = df['BB_Middle'] + (bb_std * 2)
+        df['BB_Lower'] = df['BB_Middle'] - (bb_std * 2)
+        
+        # Volume features
+        df['Volume_MA'] = df['Volume'].rolling(window=20).mean()
+        df['Volume_Ratio'] = df['Volume'] / df['Volume_MA']
+        
+        # Price changes
+        df['Daily_Return'] = df['Close'].pct_change()
+        df['Price_Change'] = df['Close'].diff()
+        
+        # Volatility
+        df['Volatility'] = df['Daily_Return'].rolling(window=30).std()
+        
+        # Lag features
+        for i in [1, 7, 30]:
+            df[f'Close_Lag_{i}'] = df['Close'].shift(i)
+            df[f'Volume_Lag_{i}'] = df['Volume'].shift(i)
+        
+        return df
+```
+
+#### Step 2.2: Implement ML Models
+
+**Model 1: Prophet (Facebook's Time Series Model)**
+Create `backend/ml/models/prophet_model.py`:
+```python
+from prophet import Prophet
+import pandas as pd
+import numpy as np
+
+class ProphetStockPredictor:
+    def __init__(self):
+        self.model = None
+    
+    def prepare_data(self, df: pd.DataFrame):
+        """Prepare data for Prophet (requires 'ds' and 'y' columns)"""
+        prophet_df = pd.DataFrame({
+            'ds': df['Date'],
+            'y': df['Close']
+        })
+        return prophet_df
+    
+    def train(self, df: pd.DataFrame):
+        """Train Prophet model"""
+        prophet_df = self.prepare_data(df)
+        
+        self.model = Prophet(
+            daily_seasonality=False,
+            weekly_seasonality=True,
+            yearly_seasonality=True,
+            changepoint_prior_scale=0.05
+        )
+        
+        self.model.fit(prophet_df)
+        return self.model
+    
+    def predict(self, periods=365):
+        """Predict future prices"""
+        future = self.model.make_future_dataframe(periods=periods)
+        forecast = self.model.predict(future)
+        
+        return forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+```
+
+**Model 2: LSTM Neural Network**
+Create `backend/ml/models/lstm_model.py`:
+```python
+import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+from sklearn.preprocessing import MinMaxScaler
+
+class LSTMStockPredictor:
+    def __init__(self, sequence_length=60):
+        self.sequence_length = sequence_length
+        self.model = None
+        self.scaler = MinMaxScaler(feature_range=(0, 1))
+    
+    def prepare_sequences(self, data):
+        """Create sequences for LSTM"""
+        scaled_data = self.scaler.fit_transform(data.reshape(-1, 1))
+        
+        X, y = [], []
+        for i in range(self.sequence_length, len(scaled_data)):
+            X.append(scaled_data[i-self.sequence_length:i, 0])
+            y.append(scaled_data[i, 0])
+        
+        return np.array(X), np.array(y)
+    
+    def build_model(self, input_shape):
+        """Build LSTM architecture"""
+        model = keras.Sequential([
+            keras.layers.LSTM(50, return_sequences=True, input_shape=input_shape),
+            keras.layers.Dropout(0.2),
+            keras.layers.LSTM(50, return_sequences=True),
+            keras.layers.Dropout(0.2),
+            keras.layers.LSTM(50),
+            keras.layers.Dropout(0.2),
+            keras.layers.Dense(1)
+        ])
+        
+        model.compile(optimizer='adam', loss='mean_squared_error')
+        return model
+    
+    def train(self, prices, epochs=50, batch_size=32):
+        """Train LSTM model"""
+        X, y = self.prepare_sequences(prices)
+        X = X.reshape((X.shape[0], X.shape[1], 1))
+        
+        self.model = self.build_model((X.shape[1], 1))
+        
+        self.model.fit(
+            X, y,
+            epochs=epochs,
+            batch_size=batch_size,
+            validation_split=0.1,
+            verbose=1
+        )
+        
+        return self.model
+    
+    def predict(self, last_sequence, days_ahead=365):
+        """Predict future prices"""
+        predictions = []
+        current_sequence = last_sequence.copy()
+        
+        for _ in range(days_ahead):
+            scaled_sequence = self.scaler.transform(current_sequence.reshape(-1, 1))
+            X_pred = scaled_sequence.reshape(1, self.sequence_length, 1)
+            
+            pred_scaled = self.model.predict(X_pred, verbose=0)
+            pred_price = self.scaler.inverse_transform(pred_scaled)[0, 0]
+            
+            predictions.append(pred_price)
+            current_sequence = np.append(current_sequence[1:], pred_price)
+        
+        return np.array(predictions)
+```
+
+**Model 3: ARIMA**
+Create `backend/ml/models/arima_model.py`:
+```python
+from statsmodels.tsa.arima.model import ARIMA
+import pandas as pd
+
+class ARIMAStockPredictor:
+    def __init__(self, order=(5, 1, 0)):
+        self.order = order
+        self.model = None
+        self.fitted_model = None
+    
+    def train(self, prices):
+        """Train ARIMA model"""
+        self.model = ARIMA(prices, order=self.order)
+        self.fitted_model = self.model.fit()
+        return self.fitted_model
+    
+    def predict(self, steps=365):
+        """Predict future prices"""
+        forecast = self.fitted_model.forecast(steps=steps)
+        return forecast
+```
+
+#### Step 2.3: Model Training Pipeline
+Create `backend/ml/training.py`:
+```python
+from models.prophet_model import ProphetStockPredictor
+from models.lstm_model import LSTMStockPredictor
+from models.arima_model import ARIMAStockPredictor
+import joblib
+import json
+
+class ModelTrainer:
+    def __init__(self):
+        self.models = {}
+    
+    def train_all_models(self, ticker, df):
+        """Train all models for a given stock"""
+        results = {}
+        
+        # Train Prophet
+        prophet = ProphetStockPredictor()
+        prophet.train(df)
+        self.models[f'{ticker}_prophet'] = prophet
+        results['prophet'] = 'trained'
+        
+        # Train LSTM
+        lstm = LSTMStockPredictor()
+        prices = df['Close'].values
+        lstm.train(prices)
+        self.models[f'{ticker}_lstm'] = lstm
+        results['lstm'] = 'trained'
+        
+        # Train ARIMA
+        arima = ARIMAStockPredictor()
+        arima.train(df['Close'])
+        self.models[f'{ticker}_arima'] = arima
+        results['arima'] = 'trained'
+        
+        return results
+    
+    def save_models(self, ticker):
+        """Save trained models"""
+        for model_name, model in self.models.items():
+            if ticker in model_name:
+                joblib.dump(model, f'models/{model_name}.pkl')
+    
+    def generate_predictions(self, ticker, days=365):
+        """Generate predictions from all models"""
+        predictions = {}
+        
+        # Prophet predictions
+        prophet = self.models.get(f'{ticker}_prophet')
+        if prophet:
+            predictions['prophet'] = prophet.predict(periods=days)
+        
+        # LSTM predictions
+        lstm = self.models.get(f'{ticker}_lstm')
+        if lstm:
+            # Get last sequence and predict
+            predictions['lstm'] = lstm.predict(last_sequence, days_ahead=days)
+        
+        # ARIMA predictions
+        arima = self.models.get(f'{ticker}_arima')
+        if arima:
+            predictions['arima'] = arima.predict(steps=days)
+        
+        return predictions
+```
+
+### Phase 3: Backend API Development
+
+#### Step 3.1: FastAPI Application Setup
+Create `backend/main.py`:
+```python
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import uvicorn
+
+from api import stocks, predictions, analytics, companies
+from database import engine, Base
+from tasks.scheduler import start_scheduler
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title="Stock Prediction Platform",
+    description="Historical stock data and ML predictions",
+    version="1.0.0"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(stocks.router, prefix="/api/stocks", tags=["stocks"])
+app.include_router(predictions.router, prefix="/api/predictions", tags=["predictions"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(companies.router, prefix="/api/companies", tags=["companies"])
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on startup"""
+    start_scheduler()
+
+@app.get("/")
+async def root():
+    return {"message": "Stock Prediction Platform API"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+```
+
+#### Step 3.2: API Endpoints
+
+**Stock Data Endpoints** (`backend/api/stocks.py`):
+```python
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from datetime import datetime, timedelta
+
+from database import get_db
+from models.stock import Company, StockPrice
+from schemas.stock import StockPriceResponse, StockPerformanceResponse
+
+router = APIRouter()
+
+@router.get("/companies", response_model=List[dict])
+async def get_all_companies(db: Session = Depends(get_db)):
+    """Get list of all 100 companies"""
+    companies = db.query(Company).all()
+    return [{"ticker": c.ticker, "name": c.name, "sector": c.sector} for c in companies]
+
+@router.get("/{ticker}/prices")
+async def get_stock_prices(
+    ticker: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get historical prices for a stock"""
+    company = db.query(Company).filter(Company.ticker == ticker).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    query = db.query(StockPrice).filter(StockPrice.company_id == company.id)
+    
+    if start_date:
+        query = query.filter(StockPrice.date >= start_date)
+    if end_date:
+        query = query.filter(StockPrice.date <= end_date)
+    
+    prices = query.order_by(StockPrice.date).all()
+    
+    return {
+        "ticker": ticker,
+        "data": [
+            {
+                "date": str(p.date),
+                "open": float(p.open),
+                "high": float(p.high),
+                "low": float(p.low),
+                "close": float(p.close),
+                "volume": p.volume
+            }
+            for p in prices
+        ]
+    }
+
+@router.get("/{ticker}/performance")
+async def get_stock_performance(
+    ticker: str,
+    db: Session = Depends(get_db)
+):
+    """Calculate performance metrics"""
+    company = db.query(Company).filter(Company.ticker == ticker).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Get prices for last year
+    one_year_ago = datetime.now() - timedelta(days=365)
+    prices = db.query(StockPrice).filter(
+        StockPrice.company_id == company.id,
+        StockPrice.date >= one_year_ago
+    ).order_by(StockPrice.date).all()
+    
+    if not prices:
+        raise HTTPException(status_code=404, detail="No data available")
+    
+    # Calculate metrics
+    first_price = float(prices[0].close)
+    last_price = float(prices[-1].close)
+    year_return = ((last_price - first_price) / first_price) * 100
+    
+    prices_list = [float(p.close) for p in prices]
+    volatility = np.std(np.diff(prices_list) / prices_list[:-1]) * np.sqrt(252) * 100
+    
+    return {
+        "ticker": ticker,
+        "current_price": last_price,
+        "year_return": round(year_return, 2),
+        "volatility": round(volatility, 2),
+        "year_high": max(prices_list),
+        "year_low": min(prices_list)
+    }
+```
+
+**Prediction Endpoints** (`backend/api/predictions.py`):
+```python
+from fastapi import APIRouter, Depends, BackgroundTasks
+from sqlalchemy.orm import Session
+
+from database import get_db
+from ml.training import ModelTrainer
+from ml.prediction import generate_predictions
+
+router = APIRouter()
+
+@router.post("/{ticker}/train")
+async def train_model(
+    ticker: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """Trigger model training for a stock"""
+    # Add training task to background
+    background_tasks.add_task(train_stock_models, ticker, db)
+    
+    return {
+        "message": f"Training started for {ticker}",
+        "status": "processing"
+    }
+
+@router.get("/{ticker}/predict")
+async def get_predictions(
+    ticker: str,
+    model: str = "prophet",  # prophet, lstm, or arima
+    days: int = 365,
+    db: Session = Depends(get_db)
+):
+    """Get price predictions for next year"""
+    predictions = generate_predictions(ticker, model, days, db)
+    
+    if not predictions
