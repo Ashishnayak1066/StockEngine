@@ -24,7 +24,7 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card/50 backdrop-blur-xl flex flex-col hidden md:flex">
+      <aside className="w-64 border-r border-border bg-black flex flex-col hidden md:flex">
         <div className="p-6 border-b border-border">
           <h1 className="text-xl font-mono font-bold tracking-tighter text-primary flex items-center gap-2">
             <TrendingUp className="w-6 h-6" />

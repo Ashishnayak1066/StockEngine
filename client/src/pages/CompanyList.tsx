@@ -29,25 +29,25 @@ export default function CompanyList() {
         </div>
 
         {/* Search and Filter Bar */}
-        <div className="flex items-center gap-4 bg-card/30 p-4 rounded-xl border border-border backdrop-blur-sm">
+        <div className="flex items-center gap-4 bg-black p-4 rounded-xl border border-border">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Search by ticker or company name..." 
-              className="pl-10 bg-background/50 border-border"
+              className="pl-10 bg-black border-border"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-background/50 rounded-md border border-border text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+          <div className="flex items-center gap-2 px-3 py-2 bg-black rounded-md border border-border text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
             <Filter className="w-4 h-4" />
             <span>Filter</span>
           </div>
         </div>
 
         {/* Companies List Table */}
-        <div className="border border-border rounded-xl overflow-hidden bg-card/30 backdrop-blur-sm">
-          <div className="grid grid-cols-12 gap-4 p-4 border-b border-border bg-muted/20 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="border border-border rounded-xl overflow-hidden bg-black">
+          <div className="grid grid-cols-12 gap-4 p-4 border-b border-border bg-black text-xs font-medium text-muted-foreground uppercase tracking-wider">
             <div className="col-span-2">Ticker</div>
             <div className="col-span-3">Company</div>
             <div className="col-span-2">Sector</div>
@@ -61,7 +61,7 @@ export default function CompanyList() {
               <div 
                 key={company.ticker}
                 onClick={() => setLocation(`/stock/${company.ticker}`)}
-                className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-accent/50 transition-colors cursor-pointer group"
+                className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-900 transition-colors cursor-pointer group"
               >
                 <div className="col-span-2 font-mono font-bold text-primary group-hover:text-primary/80">
                   {company.ticker}
